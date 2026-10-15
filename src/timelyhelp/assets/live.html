@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TimelyHelp · Live native simulations</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10161c;color:#e6edf3}
+body{margin:0;padding:24px;max-width:1800px;margin:auto}h1{font-size:26px;margin:0 0 8px}p{color:#acbac9;line-height:1.5}
+button,select{padding:10px 16px;border:1px solid #455568;border-radius:7px;background:#243343;color:inherit;font:inherit;cursor:pointer}
+button.primary{background:#1b7558}button:disabled{opacity:.5;cursor:wait}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0}
+#message{color:#ffca76;min-height:24px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+article{background:#19232d;border:1px solid #304152;border-radius:12px;overflow:hidden}header{padding:16px;display:flex;justify-content:space-between;gap:12px}
+h2{font-size:18px;margin:0}small{color:#9dafc2}.phase{font-size:13px;border:1px solid #526477;padding:4px 8px;border-radius:5px;height:fit-content}
+figure{margin:0;background:#090d12;position:relative}.world{display:block;width:100%;aspect-ratio:16/9;object-fit:contain}figcaption{position:absolute;bottom:6px;left:8px;background:#000b;border-radius:4px;padding:3px 6px;font-size:12px}
+article.focused{grid-column:1/-1}.world{cursor:grab;touch-action:none}figure:fullscreen{width:100vw;height:100vh;background:#090d12}figure:fullscreen img{height:100vh;object-fit:contain}.camera-buttons{position:absolute;top:10px;right:10px;display:flex;gap:6px}.camera-buttons button{font-size:12px;padding:6px 10px;background:#0e1826c9}.hint{position:absolute;top:12px;left:12px;font-size:12px;padding:5px 8px;background:#0e1826b8;border-radius:4px}
+.sensors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;margin-top:2px}.sensors img{width:100%;aspect-ratio:2/1;object-fit:contain;image-rendering:pixelated}
+.readout{padding:14px 16px;display:flex;gap:16px;flex-wrap:wrap}.readout span{font-size:13px;color:#a8bbce}.readout b{display:block;color:#e6edf3;font-size:17px}
+details{margin:0 16px 16px;font-size:13px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;background:#111922;padding:10px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:16px}.robot{color:#7fe098}.worker{color:#ff9b7b}.cart{color:#829eff}
+@media(max-width:900px){.grid{grid-template-columns:1fr}body{padding:14px}}
+</style>
+<h1>TimelyHelp live simulations</h1>
+<p>Explore four GPU-rendered 3D worlds: a transport robot carrying cargo, workers, carts and delayed assistance. Drag the world view to orbit, scroll to zoom, or follow the robot. Each short demo uses the <b>always-query baseline</b>; pilot training has not started.</p>
+<div class="controls">
+<button id="run" class="primary" disabled>Run short demos</button><button id="pause" disabled>Pause all</button>
+<label>World camera <select id="view"><option value="follow">Follow robot</option><option value="overview">Facility overview</option><option value="top">Top</option><option value="orbit">Orbit / zoom</option></select></label>
+<button id="stop">Stop session</button><small id="session"></small>
+</div>
+<div id="message" role="status">Connecting… Native cameras can take a few minutes to warm up.</div>
+<div class="legend"><span>Detailed 3D world: industrial robot · PPE workers · loaded carts</span><span>Sensor thumbnails: original research markers</span><span>Depth: yellow near → blue far (0–7 m)</span></div>
+<main class="grid" id="grid"></main>
+<p>The detailed world view is a presentation of the actual simulation poses, with nonphysical visual models and decorative walking animation. The policy uses the original scientific cameras shown below it and admitted query replies. Collision dynamics are unchanged. Native rendering may run slower than wall clock; both simulation time and achieved speed appear below. Pause freezes physics at the next completed tick.</p>
+<script>
+const $=id=>document.getElementById(id); let disconnected=false, inFlight=false;
+const cards=new Map();
+let orbit={azimuth:-55,elevation:34,distance:12},lastOrbit=0,drag=null;
+function sendOrbit(){if(Date.now()-lastOrbit<180)return;lastOrbit=Date.now();control('orbit',orbit);}
+async function control(action,value){
+  try{const r=await fetch('/api/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,value})});const data=await r.json();if(!r.ok)throw Error(data.error);$('message').textContent=action==='stop'?'Session stopping; GPU workers are closing.':'';}
+  catch(e){$('message').textContent=e.message;}
+}
+$('run').onclick=()=>control('run');$('pause').onclick=()=>control('pause');$('stop').onclick=()=>control('stop');$('view').onchange=()=>control('view',$('view').value);
+function card(gpu){
+  if(cards.has(gpu))return cards.get(gpu);
+  const element=document.createElement('article');
+  element.innerHTML=`<header><div><h2>GPU ${gpu}</h2><small class="scenario"></small></div><span class="phase">starting</span></header>
+  <figure><img class="world" alt="Detailed native 3D world"><span class="hint">Drag to orbit · scroll to zoom</span><div class="camera-buttons"><button class="focus">Focus</button><button class="fullscreen">Fullscreen</button></div><figcaption>Detailed 3D diagnostic view · RTX · actual simulation poses</figcaption></figure>
+  <div class="sensors"><figure><img class="onboard" alt="Actual onboard RGB"><figcaption>Onboard RGB</figcaption></figure><figure><img class="infrastructure" alt="Actual infrastructure RGB"><figcaption>Infrastructure RGB</figcaption></figure><figure><img class="depth" alt="Actual onboard depth"><figcaption>Onboard depth</figcaption></figure></div>
+  <div class="readout"><span>Simulation time<b class="time">—</b></span><span>Speed<b class="speed">—</b></span><span>Queries left<b class="budget">—</b></span><span>Motion bridge<b class="bridge">—</b></span><span>Simulation / wall<b class="rate">—</b></span></div>
+  <details><summary>Live observations, query / reply state and outcome</summary><pre></pre></details>`;
+  $('grid').appendChild(element);if(cards.size===0)element.classList.add('focused');cards.set(gpu,element);
+  element.querySelector('.focus').onclick=()=>{for(const other of cards.values())other.classList.remove('focused');element.classList.add('focused');element.scrollIntoView({behavior:'smooth',block:'start'});};
+  element.querySelector('.fullscreen').onclick=()=>element.querySelector('figure').requestFullscreen().catch(e=>$('message').textContent=e.message);
+  const img=element.querySelector('.world');
+  img.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY};img.setPointerCapture(e.pointerId);img.style.cursor='grabbing';};
+  img.onpointermove=e=>{if(!drag)return;orbit.azimuth+=(e.clientX-drag.x)*.3;orbit.elevation=Math.max(10,Math.min(85,orbit.elevation+(e.clientY-drag.y)*.22));drag={x:e.clientX,y:e.clientY};sendOrbit();};
+  img.onpointerup=()=>{drag=null;img.style.cursor='grab';lastOrbit=0;sendOrbit();};
+  img.onpointercancel=()=>{drag=null;img.style.cursor='grab';};
+  img.onwheel=e=>{e.preventDefault();orbit.distance=Math.max(2,Math.min(30,orbit.distance*Math.exp(e.deltaY*.001)));sendOrbit();};
+  return element;
+}
+function refreshFrame(img,url){
+  // Avoid an unbounded image-request queue on slow SSH connections.
+  if(img.dataset.loading==='1')return;
+  img.dataset.loading='1';img.onload=img.onerror=()=>{img.dataset.loading='0';};img.src=url;
+}
+async function update(){
+  if(inFlight||disconnected)return;inFlight=true;
+  try{
+    const r=await fetch('/api/status');if(!r.ok)throw Error('Viewer status unavailable');const s=await r.json();
+    const ready=s.jobs.every(j=>['ready','done'].includes(j.phase)&&j.run===s.control.run);
+    $('run').disabled=!ready;$('run').textContent=`Run ${s.duration}s demos${s.control.run?' again':''}`;
+    $('pause').disabled=!s.jobs.some(j=>['running','paused'].includes(j.phase));$('pause').textContent=s.control.paused?'Resume all':'Pause all';
+    $('view').value=s.control.view;$('session').textContent=`Session expires in ${Math.max(0,Math.ceil((s.expires_unix-Date.now()/1000)/60))} min`;
+    if(s.jobs.some(j=>j.phase==='error'))$('message').textContent=s.jobs.filter(j=>j.error).map(j=>`GPU ${j.gpu}: ${j.error}`).join(' · ');
+    else if(s.jobs.some(j=>j.phase==='starting'))$('message').textContent='Warming up native cameras…';
+    else if(!s.control.stop)$('message').textContent=ready?'Ready. Click Run to watch the short missions.':'';
+    for(const j of s.jobs){const e=card(j.gpu),o=j.observation||{};
+      e.querySelector('.scenario').textContent=`${j.setting||''} · ${(j.family||'').replaceAll('_',' ')} · always-query baseline`;
+      e.querySelector('.phase').textContent=j.phase;
+      e.querySelector('.time').textContent=o.time===undefined?'—':`${o.time.toFixed(1)} / ${s.duration}s`;
+      e.querySelector('.speed').textContent=o.velocity===undefined?'—':`${o.velocity.toFixed(2)} m/s`;
+      e.querySelector('.budget').textContent=o.remaining_queries??'—';e.querySelector('.bridge').textContent=j.telemetry?.bridge||'—';
+      e.querySelector('.rate').textContent=o.time>0&&j.wall_elapsed>0?`${(o.time/j.wall_elapsed).toFixed(2)}×`:'—';
+      e.querySelector('pre').textContent=JSON.stringify({pose:o.pose,tracks:o.tracks,pending:o.pending,replies:o.messages,decision:j.telemetry?.decision,outcome:j.outcomes,error:j.error},null,2);
+      if(!['starting','error','stopped'].includes(j.phase))for(const name of ['world','onboard','infrastructure','depth'])refreshFrame(e.querySelector(`.${name}`),`/frame/${j.gpu}/${name}.jpg?t=${Date.now()}`);
+    }
+  }catch(e){$('message').textContent=`Connection closed or unavailable. Check your SSH tunnel and server process. (${e.message})`;if($('session').textContent.includes('0 min'))disconnected=true;}
+  finally{inFlight=false;}
+}
+update();setInterval(update,500);
+</script>
+</html>

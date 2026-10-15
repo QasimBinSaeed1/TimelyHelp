@@ -1,0 +1,20 @@
+.conda/
+.local/
+third_party/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+artifacts/*
+!artifacts/.gitkeep
+data/
+outputs/
+*.log
+.env
+
+# Only publish README.md among markdown files
+*.md
+!README.md

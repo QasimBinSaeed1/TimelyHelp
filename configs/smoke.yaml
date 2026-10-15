@@ -1,0 +1,35 @@
+# Bounded plumbing validation. Never use these fitted scores as research evidence.
+mode: smoke
+backend: reference
+training_seeds: [17]
+scenario_seed: 20261010
+simulation:
+  dt: 0.1
+  horizon: 12.0
+  commitment: 0.5
+  max_queries: 3
+generation:
+  episodes: {train: 3, development: 2, calibration: 2, test: 3}
+  snapshots_per_episode: 1
+  snapshot_times: [2.0]
+  delays: [0.0, 0.75]
+  bridges: [cautious, hold]
+  sources: [infrastructure, supervisor]
+  replications: 1
+learning:
+  epochs: 2
+  ensemble_size: 2
+  hidden_dim: 24
+  batch_size: 32
+evaluation:
+  episodes: 3
+  transfer_episodes: 3
+  bootstrap_samples: 50
+  methods: [nominal, cautious, always_query, confidence, failure_lead_time, planning_aware, model_based_voi, timelyhelp]
+calibration:
+  risk_limits: [0.15, 0.4]
+  query_penalties: [0.03]
+  max_collision_rate: 0.1
+ablations: [no_latency, no_W, no_reliability, no_uncertainty, no_hold, shuffled_pairs, unpaired]
+controllers: [local, reactive]
+diagnostics: {oracle_enabled: true, oracle_max_decisions: 1, oracle_replications: 1}

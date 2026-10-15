@@ -1,0 +1,24 @@
+# 3000 snapshots; scale to 10000 only after pilot/learning curves justify it.
+mode: confirmatory
+backend: isaac
+training_seeds: [11, 23, 37, 53, 71]
+scenario_seed: 20261010
+simulation: {dt: 0.1, horizon: 25.0, commitment: 0.5, max_queries: 8, camera_height: 48}
+generation:
+  episodes: {train: 600, development: 150, calibration: 150, test: 100}
+  snapshots_per_episode: 3
+  snapshot_times: [0.5, 1.5, 2.5]
+  delays: [0.0, 0.25, 0.75, 1.5, 3.0]
+  bridges: [cautious, hold]
+  sources: [infrastructure, supervisor]
+  replications: 5
+learning: {epochs: 100, ensemble_size: 5, hidden_dim: 64, batch_size: 128}
+evaluation:
+  episodes: 200
+  transfer_episodes: 100
+  bootstrap_samples: 5000
+  methods: [nominal, cautious, always_query, confidence, failure_lead_time, planning_aware, model_based_voi, timelyhelp]
+calibration: {risk_limits: [0.01, 0.025, 0.05, 0.1, 0.2], query_penalties: [0.01, 0.03, 0.1], max_collision_rate: 0.05}
+ablations: [no_latency, no_W, no_reliability, no_uncertainty, no_hold, shuffled_pairs, unpaired]
+controllers: [local, reactive]
+diagnostics: {oracle_enabled: true, oracle_episodes: 12, oracle_decision_interval_s: 2.5, oracle_max_decisions: null, oracle_replications: 5}

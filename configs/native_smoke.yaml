@@ -1,0 +1,31 @@
+# Native integration only: four short split rollouts and one fitted gate.
+# This does not estimate assistance benefit or establish risk calibration.
+mode: smoke
+backend: isaac
+training_seeds: [17]
+scenario_seed: 20261010
+simulation:
+  dt: 0.1
+  horizon: 0.8
+  commitment: 0.2
+  max_queries: 1
+  camera_height: 48
+  source_latency: {infrastructure: [0.1, 0.2], supervisor: [0.1, 0.2]}
+generation:
+  episodes: {train: 1, development: 1, calibration: 1, test: 1}
+  snapshots_per_episode: 1
+  snapshot_times: [0.1]
+  delays: [0.0, 0.2]
+  bridges: [cautious, hold]
+  sources: [infrastructure, supervisor]
+  replications: 1
+learning: {epochs: 1, ensemble_size: 1, hidden_dim: 8, batch_size: 32}
+evaluation:
+  episodes: 1
+  transfer_episodes: 3
+  bootstrap_samples: 10
+  methods: [nominal, always_query, timelyhelp]
+calibration: {risk_limits: [0.4], query_penalties: [0.03], max_collision_rate: 0.1}
+ablations: []
+controllers: [local]
+diagnostics: {oracle_enabled: false, oracle_max_decisions: 1, oracle_replications: 1}

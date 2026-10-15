@@ -1,0 +1,17 @@
+{
+  "ticvla_dynanav": {
+    "repository": "https://github.com/ucla-mobility/TIC-VLA",
+    "commit": "9fa6f8b66b9e121d5df5df071297bba8e5353ebb",
+    "isaac_sim": "5.0.0",
+    "exposure_audit": "Released pretrained policy includes DynaNav training data; original maps must not be called unseen.",
+    "original_evaluation": "third_party/TIC-VLA/DynaNav/run_benchmark.sh",
+    "assistance_benchmark": "Separate TimelyHelp authored tasks, shared observation/message/safety interfaces."
+  },
+  "native_documentation": [
+    "https://github.com/ucla-mobility/TIC-VLA#setup",
+    "https://docs.isaacsim.omniverse.nvidia.com/latest/installation/install_python.html",
+    "https://gazebosim.org/docs/harmonic/install_ubuntu/",
+    "https://gazebosim.org/api/sim/8/python_interfaces.html",
+    "https://gazebosim.org/api/transport/13/python.html"
+  ]
+}
